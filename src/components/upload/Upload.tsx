@@ -6,7 +6,7 @@ import { BillData } from "@/types/bill";
 import { extractBillData } from "@/lib/billAnalyzer";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
-import { FileScan } from "lucide-react";
+import { FileImage, Receipt, ScanLine } from "lucide-react";
 
 interface UploadProps {
   onProcessingStart: () => void;
@@ -78,25 +78,24 @@ export const Upload = ({
 
     onProcessingStart();
     setProgress(0);
-    setProcessingStep("Initializing OCR...");
+    setProcessingStep("Initializing OCR scanner...");
     
-    // Set up progress tracker
+    // Set up progress tracker for better user feedback during processing
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         // Update progress steps for better user feedback
         if (prev < 20) {
-          setProcessingStep("Loading OCR engine...");
+          setProcessingStep("Preparing image for analysis...");
         } else if (prev < 40) {
-          setProcessingStep("Scanning bill image...");
+          setProcessingStep("Reading bill with OCR...");
         } else if (prev < 65) {
-          setProcessingStep("Extracting text...");
+          setProcessingStep("Extracting text from bill...");
         } else if (prev < 85) {
-          setProcessingStep("Analyzing bill data...");
+          setProcessingStep("Identifying bill data fields...");
         } else {
-          setProcessingStep("Finalizing results...");
+          setProcessingStep("Finalizing bill analysis...");
         }
         
-        // Simulate processing progress
         const increment = Math.random() * 10;
         const newProgress = Math.min(prev + increment, 95);
         return newProgress;
@@ -107,7 +106,7 @@ export const Upload = ({
       const data = await extractBillData(file);
       clearInterval(progressInterval);
       setProgress(100);
-      setProcessingStep("Analysis complete!");
+      setProcessingStep("Bill successfully scanned!");
       onBillProcessed(data);
     } catch (error) {
       clearInterval(progressInterval);
@@ -151,27 +150,17 @@ export const Upload = ({
           <div className="flex flex-col items-center justify-center">
             {isProcessing ? (
               <div className="w-full space-y-3">
-                <FileScan className="w-12 h-12 text-primary mx-auto animate-pulse" />
+                <ScanLine className="w-12 h-12 text-primary mx-auto animate-pulse" />
                 <p className="text-sm text-gray-600">{processingStep}</p>
                 <Progress value={progress} className="h-2 w-full" />
-                <p className="text-xs text-gray-500">Using OCR to extract bill data</p>
+                <p className="text-xs text-gray-500">Scanning your Meralco bill using OCR technology</p>
               </div>
             ) : (
               <>
-                <svg
+                <Receipt
                   className="w-12 h-12 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  ></path>
-                </svg>
+                  aria-hidden="true"
+                />
                 <p className="mt-2 text-sm text-gray-600">
                   Drag and drop your Meralco bill here
                 </p>
@@ -209,7 +198,7 @@ export const Upload = ({
         disabled={!file || isProcessing}
         className="w-full"
       >
-        {isProcessing ? "Processing..." : "Analyze Bill"}
+        {isProcessing ? "Scanning Bill..." : "Scan Meralco Bill"}
       </Button>
     </div>
   );

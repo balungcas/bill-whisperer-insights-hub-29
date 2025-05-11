@@ -7,7 +7,7 @@ import { BillChart } from "@/components/bill/BillChart";
 import { Suggestions } from "@/components/suggestions/Suggestions";
 import { BillData } from "@/types/bill";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ChartBar, Info, Upload as UploadIcon } from "lucide-react";
+import { ChartBar, Info, Receipt } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
 const Index = () => {
@@ -18,7 +18,7 @@ const Index = () => {
   const handleBillProcessed = (data: BillData) => {
     setBillData(data);
     setIsProcessing(false);
-    toast.success("Bill analyzed successfully!");
+    toast.success("Bill analysis complete!");
   };
 
   const handleProcessingStart = () => {
@@ -46,8 +46,8 @@ const Index = () => {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <UploadIcon className="h-5 w-5" />
-                Upload Bill
+                <Receipt className="h-5 w-5" />
+                Upload Meralco Bill
               </h2>
               
               <Upload 
@@ -91,7 +91,7 @@ const Index = () => {
                 <ChartBar className="h-16 w-16 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-medium text-center">Upload your Meralco bill to see the analysis</h3>
                 <p className="text-muted-foreground text-center mt-2">
-                  Get detailed information about your electricity usage and discover ways to save
+                  Our OCR technology will scan your bill and provide detailed insights
                 </p>
               </div>
             )}
