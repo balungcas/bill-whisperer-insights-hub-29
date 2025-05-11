@@ -26,6 +26,7 @@ export const Upload = ({
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [processingStep, setProcessingStep] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -77,25 +78,41 @@ export const Upload = ({
 
     onProcessingStart();
     setProgress(0);
+    setProcessingStep("Initializing OCR...");
     
     // Set up progress tracker
     const progressInterval = setInterval(() => {
       setProgress(prev => {
+        // Update progress steps for better user feedback
+        if (prev < 20) {
+          setProcessingStep("Loading OCR engine...");
+        } else if (prev < 40) {
+          setProcessingStep("Scanning bill image...");
+        } else if (prev < 65) {
+          setProcessingStep("Extracting text...");
+        } else if (prev < 85) {
+          setProcessingStep("Analyzing bill data...");
+        } else {
+          setProcessingStep("Finalizing results...");
+        }
+        
         // Simulate processing progress
-        const increment = Math.random() * 15;
+        const increment = Math.random() * 10;
         const newProgress = Math.min(prev + increment, 95);
         return newProgress;
       });
-    }, 300);
+    }, 800);
 
     try {
       const data = await extractBillData(file);
       clearInterval(progressInterval);
       setProgress(100);
+      setProcessingStep("Analysis complete!");
       onBillProcessed(data);
     } catch (error) {
       clearInterval(progressInterval);
       setProgress(0);
+      setProcessingStep("");
       onError(error instanceof Error ? error.message : "Failed to process bill");
     }
   };
@@ -135,7 +152,7 @@ export const Upload = ({
             {isProcessing ? (
               <div className="w-full space-y-3">
                 <FileScan className="w-12 h-12 text-primary mx-auto animate-pulse" />
-                <p className="text-sm text-gray-600">Processing bill...</p>
+                <p className="text-sm text-gray-600">{processingStep}</p>
                 <Progress value={progress} className="h-2 w-full" />
                 <p className="text-xs text-gray-500">Using OCR to extract bill data</p>
               </div>

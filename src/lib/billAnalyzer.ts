@@ -1,9 +1,6 @@
-import { BillData } from "@/types/bill";
-import * as tf from '@tensorflow/tfjs';
-import Tesseract from 'tesseract.js';
 
-// Initialize TensorFlow
-tf.setBackend('webgl');
+import { BillData } from "@/types/bill";
+import Tesseract from 'tesseract.js';
 
 export const extractBillData = async (file: File): Promise<BillData> => {
   console.log(`Processing bill image with OCR: ${file.name}`);
@@ -47,177 +44,340 @@ export const extractBillData = async (file: File): Promise<BillData> => {
 };
 
 const parseBillText = (text: string): BillData => {
+  console.log("Parsing extracted bill text");
+  
   // Normalize the text to make matching easier
   const normalizedText = text.toLowerCase().replace(/\s+/g, ' ');
   
-  // Try to extract actual data from the bill text
-  // These are sample patterns - will need refinement based on real Meralco bills
-  const accountNumberMatch = text.match(/(?:account number|account no)[:\s]*([0-9]+)/i);
-  const customerNameMatch = text.match(/(?:customer name|service name)[:\s]*([A-Za-z\s.]+)/i);
-  const currentReadingMatch = text.match(/(?:current reading)[:\s]*([0-9,]+)/i);
-  const previousReadingMatch = text.match(/(?:previous reading)[:\s]*([0-9,]+)/i);
-  const totalKwhMatch = text.match(/(?:total kwh|consumption)[:\s]*([0-9,.]+)/i);
-  const totalAmountMatch = text.match(/(?:total amount)[:\s]*(?:PHP|\$)?([0-9,.]+)/i);
-  const dueDateMatch = text.match(/(?:due date)[:\s]*([A-Za-z0-9,\s.]+)/i);
-  const billingMonthMatch = text.match(/(?:billing month|for the month of)[:\s]*([A-Za-z0-9\s]+)/i);
-  const generationChargeMatch = text.match(/(?:generation charge)[:\s]*(?:PHP|\$)?([0-9,.]+)/i);
-  const transmissionChargeMatch = text.match(/(?:transmission charge)[:\s]*(?:PHP|\$)?([0-9,.]+)/i);
-  const systemLossChargeMatch = text.match(/(?:system loss charge)[:\s]*(?:PHP|\$)?([0-9,.]+)/i);
-  const distributionChargeMatch = text.match(/(?:distribution charge)[:\s]*(?:PHP|\$)?([0-9,.]+)/i);
-  const meterNumberMatch = text.match(/(?:meter number|meter no)[:\s]*([A-Za-z0-9]+)/i);
-  
-  // Generate randomized data for fields we couldn't extract
-  const currentDate = new Date();
-  const previousMonth = new Date(currentDate);
-  previousMonth.setMonth(currentDate.getMonth() - 1);
-  
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  
-  // Extract what we can from the text, fallback to random data if needed
-  const totalKwh = totalKwhMatch ? parseFloat(totalKwhMatch[1].replace(/,/g, '')) : Math.floor(Math.random() * 200) + 100;
-  const currentReading = currentReadingMatch ? parseInt(currentReadingMatch[1].replace(/,/g, '')) : Math.floor(Math.random() * 5000) + 15000;
-  const previousReading = previousReadingMatch ? parseInt(previousReadingMatch[1].replace(/,/g, '')) : currentReading - totalKwh;
-  
-  // Generate realistic rate (between 10-13 pesos per kWh)
-  const ratePerKwh = 10 + (Math.random() * 3);
-  
-  // Calculate charges based on kWh
-  const generationCharge = generationChargeMatch 
-    ? parseFloat(generationChargeMatch[1].replace(/,/g, '')) 
-    : totalKwh * ratePerKwh * 0.55;
-    
-  const transmissionCharge = transmissionChargeMatch 
-    ? parseFloat(transmissionChargeMatch[1].replace(/,/g, '')) 
-    : totalKwh * ratePerKwh * 0.08;
-    
-  const systemLossCharge = systemLossChargeMatch 
-    ? parseFloat(systemLossChargeMatch[1].replace(/,/g, '')) 
-    : totalKwh * ratePerKwh * 0.06;
-    
-  const distributionCharge = distributionChargeMatch 
-    ? parseFloat(distributionChargeMatch[1].replace(/,/g, '')) 
-    : totalKwh * ratePerKwh * 0.16;
-    
-  const governmentTaxes = totalKwh * ratePerKwh * 0.10;
-  const universalCharges = totalKwh * ratePerKwh * 0.02;
-  const fitAllCharge = totalKwh * ratePerKwh * 0.007;
-  const otherCharges = totalKwh * ratePerKwh * 0.013;
-  const subsidyCharge = 0.10;
-  
-  // Calculate total amount if not found in text
-  const totalAmount = totalAmountMatch 
-    ? parseFloat(totalAmountMatch[1].replace(/,/g, '')) 
-    : generationCharge + transmissionCharge + systemLossCharge + 
-      distributionCharge + governmentTaxes + universalCharges + 
-      fitAllCharge + otherCharges + subsidyCharge;
-  
-  // Generate monthly consumption data with realistic variations
-  const monthlyConsumption = [];
-  let baseLine = totalKwh;
-  
-  for (let i = 0; i < 12; i++) {
-    const monthIndex = (currentDate.getMonth() - i + 12) % 12;
-    const variation = Math.floor(Math.random() * 50) - 25; // -25 to +25 variation
-    monthlyConsumption.push({
-      month: months[monthIndex],
-      consumption: Math.max(50, baseLine + variation)
-    });
-    // Slight seasonal trend
-    baseLine = baseLine + (i % 3 === 0 ? 10 : -10);
-  }
-  
-  // Calculate comparison with previous month
-  const current = totalKwh;
-  const previous = monthlyConsumption[1].consumption;
-  const percentageChange = ((current - previous) / previous) * 100;
-  
-  // Format dates
-  const today = new Date();
-  const billingPeriodEnd = new Date(today);
-  const billingPeriodStart = new Date(today);
-  billingPeriodStart.setDate(billingPeriodStart.getDate() - 30);
-  
-  // Parse due date or generate one
-  let dueDate = new Date(today);
-  if (dueDateMatch) {
-    try {
-      dueDate = new Date(dueDateMatch[1]);
-      if (isNaN(dueDate.getTime())) {
-        // If parsing failed, fallback to the default
-        dueDate = new Date(today);
-        dueDate.setDate(dueDate.getDate() + 10);
-      }
-    } catch (error) {
-      dueDate = new Date(today);
-      dueDate.setDate(dueDate.getDate() + 10);
-    }
-  } else {
-    dueDate.setDate(dueDate.getDate() + 10);
-  }
-  
-  const nextMeterReading = new Date(billingPeriodEnd);
-  nextMeterReading.setMonth(nextMeterReading.getMonth() + 1);
-  
-  // Environmental impact calculation
-  const ghgEmissions = totalKwh * 0.000692;
-  const offsetPlantations = Math.ceil(ghgEmissions * 40);
-  
-  // Generate the bill data with extracted values or fallbacks
-  const billData: BillData = {
-    accountNumber: accountNumberMatch ? accountNumberMatch[1] : (Math.floor(Math.random() * 9000000000) + 1000000000).toString(),
-    billingMonth: billingMonthMatch ? billingMonthMatch[1] : `${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`,
-    customerName: customerNameMatch ? customerNameMatch[1].trim() : generateRandomName(),
-    totalAmount: parseFloat(totalAmount.toFixed(2)),
-    dueDate: dueDate.toISOString().split('T')[0],
-    generationCharge: parseFloat(generationCharge.toFixed(2)),
-    transmissionCharge: parseFloat(transmissionCharge.toFixed(2)),
-    systemLossCharge: parseFloat(systemLossCharge.toFixed(2)),
-    distributionCharge: parseFloat(distributionCharge.toFixed(2)),
-    subsidyCharge: parseFloat(subsidyCharge.toFixed(2)),
-    governmentTaxes: parseFloat(governmentTaxes.toFixed(2)),
-    universalCharges: parseFloat(universalCharges.toFixed(2)),
-    fitAllCharge: parseFloat(fitAllCharge.toFixed(2)),
-    otherCharges: parseFloat(otherCharges.toFixed(2)),
-    totalKwh: totalKwh,
-    previousReading: previousReading,
-    currentReading: currentReading,
-    ratePerKwh: parseFloat(ratePerKwh.toFixed(2)),
-    billingPeriod: {
-      from: billingPeriodStart.toISOString().split('T')[0],
-      to: billingPeriodEnd.toISOString().split('T')[0]
+  // Initialize bill data with placeholders
+  let billData: Partial<BillData> = {
+    environmentalImpact: {
+      electricityUsed: 0,
+      ghgEmissions: 0,
+      offsetPlantations: 0
     },
-    meterNumber: meterNumberMatch ? meterNumberMatch[1] : `${Math.floor(Math.random() * 900) + 100}B${Math.floor(Math.random() * 9000000) + 1000000}`,
-    nextMeterReadingDate: nextMeterReading.toISOString().split('T')[0],
-    customerType: "Residential",
-    monthlyConsumption: monthlyConsumption.reverse(), // Put current month first
-    highUsageFlag: percentageChange > 10,
     comparisonData: {
-      current: current,
-      previous: previous,
-      percentageChange: parseFloat(percentageChange.toFixed(2)),
+      current: 0,
+      previous: 0,
+      percentageChange: 0,
       comparedTo: "previous month"
     },
-    environmentalImpact: {
-      electricityUsed: totalKwh,
-      ghgEmissions: parseFloat(ghgEmissions.toFixed(4)),
-      offsetPlantations: offsetPlantations
-    }
+    monthlyConsumption: []
   };
-
-  console.log("Bill successfully processed:", billData.customerName);
-  return billData;
+  
+  // Try to extract key information using more robust regular expressions
+  // Account Number
+  const accountNumberMatch = text.match(/(?:account number|account no|acc(?:oun)?t\.?\s*(?:number|no|#))[\s.:]*([0-9-]+)/i);
+  if (accountNumberMatch) {
+    billData.accountNumber = accountNumberMatch[1].trim();
+    console.log("Found account number:", billData.accountNumber);
+  }
+  
+  // Customer Name
+  const customerNameMatch = text.match(/(?:customer(?:'s)? name|service name|billed to|customer)[\s.:]*([A-Za-z0-9\s.,]+?)(?:\n|bill|period|meter|account)/i);
+  if (customerNameMatch) {
+    billData.customerName = customerNameMatch[1].trim();
+    console.log("Found customer name:", billData.customerName);
+  }
+  
+  // Meter Number
+  const meterNumberMatch = text.match(/(?:meter number|meter no|meter #)[\s.:]*([A-Za-z0-9-]+)/i);
+  if (meterNumberMatch) {
+    billData.meterNumber = meterNumberMatch[1].trim();
+    console.log("Found meter number:", billData.meterNumber);
+  }
+  
+  // Billing Month
+  const billingMonthMatch = text.match(/(?:billing month|for the month of|bill month|billing period)[\s.:]*([A-Za-z0-9\s.,]+?)(?:\n|due|total)/i);
+  if (billingMonthMatch) {
+    billData.billingMonth = billingMonthMatch[1].trim();
+    console.log("Found billing month:", billData.billingMonth);
+  }
+  
+  // Due Date
+  const dueDateMatch = text.match(/(?:due date|payment due|pay before)[\s.:]*([A-Za-z0-9\s.,]+?)(?:\n|total|bill)/i);
+  if (dueDateMatch) {
+    billData.dueDate = dueDateMatch[1].trim();
+    console.log("Found due date:", billData.dueDate);
+  }
+  
+  // Total Amount
+  const totalAmountMatch = text.match(/(?:total amount(?:due)?|(?:total|amount)(?:\sdue))[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (totalAmountMatch) {
+    billData.totalAmount = parseFloat(totalAmountMatch[1].replace(/,/g, ''));
+    console.log("Found total amount:", billData.totalAmount);
+  }
+  
+  // kWh Consumption
+  const totalKwhMatch = text.match(/(?:total kwh|consumption|kilowatt hour|kwh used)[\s.:]*([0-9,.]+)/i);
+  if (totalKwhMatch) {
+    billData.totalKwh = parseFloat(totalKwhMatch[1].replace(/,/g, ''));
+    console.log("Found kWh consumption:", billData.totalKwh);
+  }
+  
+  // Previous Reading
+  const previousReadingMatch = text.match(/(?:previous reading|prev(?:ious)?\.?\s*reading)[\s.:]*([0-9,.]+)/i);
+  if (previousReadingMatch) {
+    billData.previousReading = parseFloat(previousReadingMatch[1].replace(/,/g, ''));
+    console.log("Found previous reading:", billData.previousReading);
+  }
+  
+  // Current Reading
+  const currentReadingMatch = text.match(/(?:present reading|current reading|pres(?:ent)?\.?\s*reading)[\s.:]*([0-9,.]+)/i);
+  if (currentReadingMatch) {
+    billData.currentReading = parseFloat(currentReadingMatch[1].replace(/,/g, ''));
+    console.log("Found current reading:", billData.currentReading);
+  }
+  
+  // Rate per kWh (if available)
+  const rateMatch = text.match(/(?:rate per kwh|kwh rate|effective rate)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (rateMatch) {
+    billData.ratePerKwh = parseFloat(rateMatch[1].replace(/,/g, ''));
+    console.log("Found rate per kWh:", billData.ratePerKwh);
+  }
+  
+  // Billing Period (from-to)
+  const billingPeriodMatch = text.match(/(?:billing period|period covered|reading date)[\s.:]*([A-Za-z0-9\s.,]+?)\s*(?:to|-)\s*([A-Za-z0-9\s.,]+?)(?:\n|due|total)/i);
+  if (billingPeriodMatch) {
+    billData.billingPeriod = {
+      from: billingPeriodMatch[1].trim(),
+      to: billingPeriodMatch[2].trim()
+    };
+    console.log("Found billing period:", billData.billingPeriod);
+  }
+  
+  // Customer Type
+  const customerTypeMatch = text.match(/(?:customer type|consumer type|rate class)[\s.:]*([A-Za-z0-9\s]+?)(?:\n|meter|bill)/i);
+  if (customerTypeMatch) {
+    billData.customerType = customerTypeMatch[1].trim();
+    console.log("Found customer type:", billData.customerType);
+  }
+  
+  // Various charges
+  const generationChargeMatch = text.match(/(?:generation charge)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (generationChargeMatch) {
+    billData.generationCharge = parseFloat(generationChargeMatch[1].replace(/,/g, ''));
+    console.log("Found generation charge:", billData.generationCharge);
+  }
+  
+  const transmissionChargeMatch = text.match(/(?:transmission charge)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (transmissionChargeMatch) {
+    billData.transmissionCharge = parseFloat(transmissionChargeMatch[1].replace(/,/g, ''));
+    console.log("Found transmission charge:", billData.transmissionCharge);
+  }
+  
+  const systemLossChargeMatch = text.match(/(?:system loss charge)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (systemLossChargeMatch) {
+    billData.systemLossCharge = parseFloat(systemLossChargeMatch[1].replace(/,/g, ''));
+    console.log("Found system loss charge:", billData.systemLossCharge);
+  }
+  
+  const distributionChargeMatch = text.match(/(?:distribution charge)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (distributionChargeMatch) {
+    billData.distributionCharge = parseFloat(distributionChargeMatch[1].replace(/,/g, ''));
+    console.log("Found distribution charge:", billData.distributionCharge);
+  }
+  
+  const subsidyChargeMatch = text.match(/(?:subsidy charge|lifeline subsidy)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (subsidyChargeMatch) {
+    billData.subsidyCharge = parseFloat(subsidyChargeMatch[1].replace(/,/g, ''));
+    console.log("Found subsidy charge:", billData.subsidyCharge);
+  }
+  
+  const governmentTaxesMatch = text.match(/(?:government taxes|tax|vat)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (governmentTaxesMatch) {
+    billData.governmentTaxes = parseFloat(governmentTaxesMatch[1].replace(/,/g, ''));
+    console.log("Found government taxes:", billData.governmentTaxes);
+  }
+  
+  const universalChargesMatch = text.match(/(?:universal charge)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (universalChargesMatch) {
+    billData.universalCharges = parseFloat(universalChargesMatch[1].replace(/,/g, ''));
+    console.log("Found universal charges:", billData.universalCharges);
+  }
+  
+  const fitAllChargeMatch = text.match(/(?:feed-in tariff|fit-all|fit all)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (fitAllChargeMatch) {
+    billData.fitAllCharge = parseFloat(fitAllChargeMatch[1].replace(/,/g, ''));
+    console.log("Found FIT-ALL charge:", billData.fitAllCharge);
+  }
+  
+  const otherChargesMatch = text.match(/(?:other charges|miscellaneous charges)[\s.:]*(?:PHP|₱)?[\s]*([0-9,.]+)/i);
+  if (otherChargesMatch) {
+    billData.otherCharges = parseFloat(otherChargesMatch[1].replace(/,/g, ''));
+    console.log("Found other charges:", billData.otherCharges);
+  }
+  
+  // Fill in missing data with estimates or placeholders
+  fillMissingData(billData);
+  
+  return billData as BillData;
 };
 
-// Helper function to generate random names
-const generateRandomName = () => {
-  const firstNames = ["Maria", "Juan", "Ana", "Roberto", "Elena", "Miguel", "Sofia", "Rafael", "Isabella", "Carlos"];
-  const lastNames = ["Garcia", "Santos", "Reyes", "Lim", "Cruz", "Gonzales", "Aquino", "Diaz", "Mendoza", "Torres"];
+// Helper function to fill in missing data with reasonable estimates
+const fillMissingData = (billData: Partial<BillData>) => {
+  const today = new Date();
   
-  const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-  const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-  const randomMiddleInitial = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  // If we have found both readings but no kWh, calculate it
+  if (billData.currentReading !== undefined && billData.previousReading !== undefined && billData.totalKwh === undefined) {
+    billData.totalKwh = billData.currentReading - billData.previousReading;
+  }
   
-  return `${randomFirstName} ${randomMiddleInitial}. ${randomLastName}`;
+  // If we have kWh but no readings, generate plausible readings
+  if (billData.totalKwh !== undefined && billData.currentReading === undefined) {
+    billData.currentReading = 10000 + Math.floor(Math.random() * 5000);
+    billData.previousReading = billData.currentReading - billData.totalKwh;
+  }
+  
+  // If we don't have totalKwh, make a sensible estimation (average Filipino household: 200-300 kWh)
+  if (billData.totalKwh === undefined) {
+    billData.totalKwh = Math.floor(Math.random() * 100) + 200; // 200-300 kWh
+    billData.currentReading = 10000 + Math.floor(Math.random() * 5000);
+    billData.previousReading = billData.currentReading - billData.totalKwh;
+  }
+  
+  // If we don't have rate per kWh, estimate based on current Meralco rates
+  if (billData.ratePerKwh === undefined) {
+    billData.ratePerKwh = 10 + (Math.random() * 3); // around 10-13 pesos per kWh
+  }
+  
+  // If we have total amount but missing charge breakdowns, estimate them based on typical percentages
+  if (billData.totalAmount !== undefined) {
+    if (billData.generationCharge === undefined) {
+      billData.generationCharge = billData.totalAmount * 0.55; // typically ~55% of total
+    }
+    if (billData.transmissionCharge === undefined) {
+      billData.transmissionCharge = billData.totalAmount * 0.08; // typically ~8% of total
+    }
+    if (billData.systemLossCharge === undefined) {
+      billData.systemLossCharge = billData.totalAmount * 0.06; // typically ~6% of total
+    }
+    if (billData.distributionCharge === undefined) {
+      billData.distributionCharge = billData.totalAmount * 0.16; // typically ~16% of total
+    }
+    if (billData.governmentTaxes === undefined) {
+      billData.governmentTaxes = billData.totalAmount * 0.10; // typically ~10% of total
+    }
+    if (billData.universalCharges === undefined) {
+      billData.universalCharges = billData.totalAmount * 0.02; // typically ~2% of total
+    }
+    if (billData.fitAllCharge === undefined) {
+      billData.fitAllCharge = billData.totalAmount * 0.007; // typically <1% of total
+    }
+    if (billData.subsidyCharge === undefined) {
+      billData.subsidyCharge = 0.10; // usually a minimal fixed charge
+    }
+    if (billData.otherCharges === undefined) {
+      billData.otherCharges = billData.totalAmount * 0.013; // typically ~1.3% of total
+    }
+  } else {
+    // If we have no total amount, calculate it based on kWh and rate
+    const baseAmount = billData.totalKwh! * billData.ratePerKwh!;
+    billData.generationCharge = baseAmount * 0.55;
+    billData.transmissionCharge = baseAmount * 0.08;
+    billData.systemLossCharge = baseAmount * 0.06;
+    billData.distributionCharge = baseAmount * 0.16;
+    billData.governmentTaxes = baseAmount * 0.10;
+    billData.universalCharges = baseAmount * 0.02;
+    billData.fitAllCharge = baseAmount * 0.007;
+    billData.subsidyCharge = 0.10;
+    billData.otherCharges = baseAmount * 0.013;
+    
+    billData.totalAmount = Object.values(billData)
+      .filter(val => typeof val === 'number')
+      .reduce((sum, val) => sum + val, 0);
+  }
+  
+  // Handle other default fields
+  if (!billData.dueDate) {
+    const dueDate = new Date(today);
+    dueDate.setDate(dueDate.getDate() + 10);
+    billData.dueDate = dueDate.toISOString().split('T')[0];
+  }
+  
+  if (!billData.accountNumber) {
+    billData.accountNumber = (Math.floor(Math.random() * 9000000000) + 1000000000).toString();
+  }
+  
+  if (!billData.customerName) {
+    const firstNames = ["Maria", "Juan", "Ana", "Roberto", "Elena", "Miguel", "Sofia"];
+    const lastNames = ["Garcia", "Santos", "Reyes", "Lim", "Cruz", "Gonzales", "Aquino"];
+    const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    billData.customerName = `${randomFirstName} ${randomLastName}`;
+  }
+  
+  if (!billData.billingMonth) {
+    const months = ["January", "February", "March", "April", "May", "June", 
+                  "July", "August", "September", "October", "November", "December"];
+    billData.billingMonth = `${months[today.getMonth()]} ${today.getFullYear()}`;
+  }
+  
+  if (!billData.meterNumber) {
+    billData.meterNumber = `${Math.floor(Math.random() * 900) + 100}B${Math.floor(Math.random() * 9000000) + 1000000}`;
+  }
+  
+  if (!billData.billingPeriod) {
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - 30);
+    billData.billingPeriod = {
+      from: startDate.toISOString().split('T')[0],
+      to: today.toISOString().split('T')[0],
+    };
+  }
+  
+  if (!billData.customerType) {
+    billData.customerType = "Residential";
+  }
+  
+  // Generate monthly consumption data for charts
+  if (!billData.monthlyConsumption || billData.monthlyConsumption.length === 0) {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const currentMonth = today.getMonth();
+    
+    let baseLine = billData.totalKwh!;
+    billData.monthlyConsumption = [];
+    
+    for (let i = 0; i < 12; i++) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      const variation = Math.floor(Math.random() * 40) - 20; // -20 to +20 variation
+      billData.monthlyConsumption.push({
+        month: months[monthIndex],
+        consumption: Math.max(50, baseLine + variation)
+      });
+      // Slight seasonal trend
+      baseLine = baseLine + (i % 3 === 0 ? 5 : -5);
+    }
+    
+    billData.monthlyConsumption.reverse(); // Put current month first
+  }
+  
+  // Calculate comparison data
+  billData.comparisonData = {
+    current: billData.totalKwh!,
+    previous: billData.monthlyConsumption[1]?.consumption || billData.totalKwh! * 0.9,
+    percentageChange: 0,
+    comparedTo: "previous month"
+  };
+  
+  billData.comparisonData.percentageChange = 
+    ((billData.comparisonData.current - billData.comparisonData.previous) / 
+     billData.comparisonData.previous) * 100;
+  
+  // Set high usage flag
+  billData.highUsageFlag = billData.comparisonData.percentageChange > 10;
+  
+  // Environmental impact calculation
+  billData.environmentalImpact = {
+    electricityUsed: billData.totalKwh!,
+    ghgEmissions: billData.totalKwh! * 0.000692,
+    offsetPlantations: Math.ceil((billData.totalKwh! * 0.000692) * 40)
+  };
+  
+  // Next meter reading date
+  const nextReadingDate = new Date(today);
+  nextReadingDate.setMonth(nextReadingDate.getMonth() + 1);
+  billData.nextMeterReadingDate = nextReadingDate.toISOString().split('T')[0];
 };
 
 export const analyzeBillForSuggestions = (billData: BillData) => {
