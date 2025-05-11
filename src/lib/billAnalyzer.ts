@@ -1,67 +1,152 @@
-
 import { BillData } from "@/types/bill";
 
 export const extractBillData = async (file: File): Promise<BillData> => {
   // In a real implementation, this would use OCR services like Tesseract.js or a backend API
-  // For demo purposes, we'll return mock data based on the uploaded Meralco bill image
-  return new Promise((resolve) => {
+  // For demo purposes, we'll simulate detection of any Meralco bill
+  return new Promise((resolve, reject) => {
     setTimeout(() => {
-      // Mock data based on the uploaded Meralco bill image
-      const mockData: BillData = {
-        accountNumber: "1540181739",
-        billingMonth: "January 2025",
-        customerName: "APOLONIO P. LIBRADO",
-        totalAmount: 2179.63,
-        dueDate: "2025-01-22",
-        generationCharge: 1250.93,
-        transmissionCharge: 160.67,
-        systemLossCharge: 116.39,
-        distributionCharge: 353.20,
-        subsidyCharge: 0.17,
-        governmentTaxes: 213.10,
-        universalCharges: 41.17,
-        fitAllCharge: 15.34,
-        otherCharges: 28.66,
-        totalKwh: 183,
-        previousReading: 18622,
-        currentReading: 18805,
-        ratePerKwh: 11.75,
-        billingPeriod: {
-          from: "2024-12-11",
-          to: "2025-01-10"
-        },
-        meterNumber: "119B4071303",
-        nextMeterReadingDate: "2025-02-10",
-        customerType: "Residential",
-        monthlyConsumption: [
-          { month: "Jan", consumption: 183 },
-          { month: "Dec", consumption: 157 },
-          { month: "Nov", consumption: 160 },
-          { month: "Oct", consumption: 153 },
-          { month: "Sep", consumption: 174 },
-          { month: "Aug", consumption: 168 },
-          { month: "Jul", consumption: 176 },
-          { month: "Jun", consumption: 221 },
-          { month: "May", consumption: 203 },
-          { month: "Apr", consumption: 201 },
-          { month: "Mar", consumption: 142 },
-          { month: "Feb", consumption: 160 }
-        ],
-        highUsageFlag: true,
-        comparisonData: {
-          current: 183,
-          previous: 157,
-          percentageChange: 16.56,
-          comparedTo: "previous month"
-        },
-        environmentalImpact: {
-          electricityUsed: 183,
-          ghgEmissions: 0.1269,
-          offsetPlantations: 5
+      try {
+        // Simulate bill parsing process
+        console.log(`Processing bill image: ${file.name}`);
+        
+        // Check if file is an image or PDF
+        if (!file.type.match('image/*') && file.type !== 'application/pdf') {
+          throw new Error("Please upload a valid image or PDF file");
         }
-      };
+        
+        // Generate randomized data to simulate analyzing different bills
+        const currentDate = new Date();
+        const previousMonth = new Date(currentDate);
+        previousMonth.setMonth(currentDate.getMonth() - 1);
+        
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        
+        // Random consumption between 100-300 kWh
+        const totalKwh = Math.floor(Math.random() * 200) + 100;
+        
+        // Generate realistic rate (between 10-13 pesos per kWh)
+        const ratePerKwh = 10 + (Math.random() * 3);
+        
+        // Calculate charges based on kWh
+        const generationCharge = totalKwh * ratePerKwh * 0.55;
+        const transmissionCharge = totalKwh * ratePerKwh * 0.08;
+        const systemLossCharge = totalKwh * ratePerKwh * 0.06;
+        const distributionCharge = totalKwh * ratePerKwh * 0.16;
+        const governmentTaxes = totalKwh * ratePerKwh * 0.10;
+        const universalCharges = totalKwh * ratePerKwh * 0.02;
+        const fitAllCharge = totalKwh * ratePerKwh * 0.007;
+        const otherCharges = totalKwh * ratePerKwh * 0.013;
+        const subsidyCharge = 0.10;
+        
+        // Calculate total amount
+        const totalAmount = generationCharge + transmissionCharge + systemLossCharge + 
+                           distributionCharge + governmentTaxes + universalCharges + 
+                           fitAllCharge + otherCharges + subsidyCharge;
+        
+        // Generate random previous reading and calculate current reading
+        const previousReading = Math.floor(Math.random() * 5000) + 10000;
+        const currentReading = previousReading + totalKwh;
+        
+        // Generate monthly consumption data with realistic variations
+        const monthlyConsumption = [];
+        let baseLine = totalKwh;
+        
+        for (let i = 0; i < 12; i++) {
+          const monthIndex = (currentDate.getMonth() - i + 12) % 12;
+          const variation = Math.floor(Math.random() * 50) - 25; // -25 to +25 variation
+          monthlyConsumption.push({
+            month: months[monthIndex],
+            consumption: Math.max(50, baseLine + variation)
+          });
+          // Slight seasonal trend
+          baseLine = baseLine + (i % 3 === 0 ? 10 : -10);
+        }
+        
+        // Calculate comparison with previous month
+        const current = totalKwh;
+        const previous = monthlyConsumption[1].consumption;
+        const percentageChange = ((current - previous) / previous) * 100;
+        
+        // Format dates
+        const today = new Date();
+        const billingPeriodEnd = new Date(today);
+        const billingPeriodStart = new Date(today);
+        billingPeriodStart.setDate(billingPeriodStart.getDate() - 30);
+        
+        const dueDate = new Date(today);
+        dueDate.setDate(dueDate.getDate() + 10);
+        
+        const nextMeterReading = new Date(billingPeriodEnd);
+        nextMeterReading.setMonth(nextMeterReading.getMonth() + 1);
 
-      resolve(mockData);
+        // Random names to simulate different users
+        const firstNames = ["Maria", "Juan", "Ana", "Roberto", "Elena", "Miguel", "Sofia", "Rafael", "Isabella", "Carlos"];
+        const lastNames = ["Garcia", "Santos", "Reyes", "Lim", "Cruz", "Gonzales", "Aquino", "Diaz", "Mendoza", "Torres"];
+        
+        const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const randomMiddleInitial = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+        
+        const customerName = `${randomFirstName} ${randomMiddleInitial}. ${randomLastName}`;
+        
+        // Generate random account number
+        const accountNumber = Math.floor(Math.random() * 9000000000) + 1000000000;
+        
+        // Generate random meter number
+        const meterNumber = `${Math.floor(Math.random() * 900) + 100}B${Math.floor(Math.random() * 9000000) + 1000000}`;
+        
+        // Environmental impact calculation
+        const ghgEmissions = totalKwh * 0.000692;
+        const offsetPlantations = Math.ceil(ghgEmissions * 40);
+        
+        // Generate the mock data with the randomized values
+        const mockData: BillData = {
+          accountNumber: accountNumber.toString(),
+          billingMonth: `${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`,
+          customerName: customerName,
+          totalAmount: parseFloat(totalAmount.toFixed(2)),
+          dueDate: dueDate.toISOString().split('T')[0],
+          generationCharge: parseFloat(generationCharge.toFixed(2)),
+          transmissionCharge: parseFloat(transmissionCharge.toFixed(2)),
+          systemLossCharge: parseFloat(systemLossCharge.toFixed(2)),
+          distributionCharge: parseFloat(distributionCharge.toFixed(2)),
+          subsidyCharge: parseFloat(subsidyCharge.toFixed(2)),
+          governmentTaxes: parseFloat(governmentTaxes.toFixed(2)),
+          universalCharges: parseFloat(universalCharges.toFixed(2)),
+          fitAllCharge: parseFloat(fitAllCharge.toFixed(2)),
+          otherCharges: parseFloat(otherCharges.toFixed(2)),
+          totalKwh: totalKwh,
+          previousReading: previousReading,
+          currentReading: currentReading,
+          ratePerKwh: parseFloat(ratePerKwh.toFixed(2)),
+          billingPeriod: {
+            from: billingPeriodStart.toISOString().split('T')[0],
+            to: billingPeriodEnd.toISOString().split('T')[0]
+          },
+          meterNumber: meterNumber,
+          nextMeterReadingDate: nextMeterReading.toISOString().split('T')[0],
+          customerType: "Residential",
+          monthlyConsumption: monthlyConsumption.reverse(), // Put current month first
+          highUsageFlag: percentageChange > 10,
+          comparisonData: {
+            current: current,
+            previous: previous,
+            percentageChange: parseFloat(percentageChange.toFixed(2)),
+            comparedTo: "previous month"
+          },
+          environmentalImpact: {
+            electricityUsed: totalKwh,
+            ghgEmissions: parseFloat(ghgEmissions.toFixed(4)),
+            offsetPlantations: offsetPlantations
+          }
+        };
+
+        console.log("Bill successfully processed:", mockData.customerName);
+        resolve(mockData);
+      } catch (error) {
+        console.error("Failed to process bill:", error);
+        reject(error);
+      }
     }, 1500);
   });
 };
@@ -121,4 +206,3 @@ export const analyzeBillForSuggestions = (billData: BillData) => {
 
   return suggestions;
 };
-
