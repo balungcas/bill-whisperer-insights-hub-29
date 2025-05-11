@@ -7,7 +7,7 @@ import { BillChart } from "@/components/bill/BillChart";
 import { Suggestions } from "@/components/suggestions/Suggestions";
 import { BillData } from "@/types/bill";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ChartBar, Info } from "lucide-react";
+import { ChartBar, Info, Upload as UploadIcon } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
 const Index = () => {
@@ -46,7 +46,7 @@ const Index = () => {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <Upload className="h-5 w-5" />
+                <UploadIcon className="h-5 w-5" />
                 Upload Bill
               </h2>
               
@@ -55,6 +55,7 @@ const Index = () => {
                 onBillProcessed={handleBillProcessed}
                 onError={handleError}
                 isProcessing={isProcessing}
+                className=""
               />
               
               {error && (
