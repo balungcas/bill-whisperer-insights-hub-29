@@ -107,7 +107,11 @@ export const Upload = ({
       clearInterval(progressInterval);
       setProgress(100);
       setProcessingStep("Bill successfully scanned!");
-      onBillProcessed(data);
+      
+      // Add a delay before sending the data to prevent UI glitches
+      setTimeout(() => {
+        onBillProcessed(data);
+      }, 500);
     } catch (error) {
       clearInterval(progressInterval);
       setProgress(0);

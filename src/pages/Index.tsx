@@ -16,27 +16,46 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleBillProcessed = (data: BillData) => {
-    // Ensure all required fields have default values
-    const safeData: BillData = {
-      ...data,
-      billingPeriod: data.billingPeriod || { from: "Not found", to: "Not found" },
-      environmentalImpact: data.environmentalImpact || { 
-        electricityUsed: 0,
-        ghgEmissions: 0,
-        offsetPlantations: 0 
-      },
-      comparisonData: data.comparisonData || {
-        current: 0,
-        previous: 0,
-        percentageChange: 0,
-        comparedTo: "previous month"
-      },
-      monthlyConsumption: data.monthlyConsumption || []
-    };
-    
-    setBillData(safeData);
-    setIsProcessing(false);
-    toast.success("Bill analysis complete!");
+    try {
+      // Ensure all required fields have default values
+      const safeData: BillData = {
+        ...data,
+        accountNumber: data.accountNumber || "Not found",
+        billingMonth: data.billingMonth || "Not found",
+        customerName: data.customerName || "Not found",
+        totalAmount: data.totalAmount || 0,
+        dueDate: data.dueDate || "Not found",
+        totalKwh: data.totalKwh || 0,
+        previousReading: data.previousReading || 0,
+        currentReading: data.currentReading || 0,
+        ratePerKwh: data.ratePerKwh || 0,
+        billingPeriod: data.billingPeriod || { from: "Not found", to: "Not found" },
+        meterNumber: data.meterNumber || "Not found",
+        nextMeterReadingDate: data.nextMeterReadingDate || "Not found",
+        customerType: data.customerType || "Residential",
+        environmentalImpact: data.environmentalImpact || { 
+          electricityUsed: 0,
+          ghgEmissions: 0,
+          offsetPlantations: 0 
+        },
+        comparisonData: data.comparisonData || {
+          current: 0,
+          previous: 0,
+          percentageChange: 0,
+          comparedTo: "previous month"
+        },
+        monthlyConsumption: data.monthlyConsumption || []
+      };
+      
+      setBillData(safeData);
+      setIsProcessing(false);
+      toast.success("Bill analysis complete!");
+    } catch (err) {
+      console.error("Error processing bill data:", err);
+      setError("Failed to process bill data. Please try again.");
+      setIsProcessing(false);
+      toast.error("Failed to analyze bill");
+    }
   };
 
   const handleProcessingStart = () => {

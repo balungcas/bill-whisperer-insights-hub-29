@@ -16,6 +16,7 @@ export const extractBillData = async (file: File): Promise<BillData> => {
     
     // Process the image with Tesseract OCR
     console.log("Starting OCR processing...");
+    
     const result = await Tesseract.recognize(
       imageUrl,
       'eng', // English language
@@ -26,7 +27,10 @@ export const extractBillData = async (file: File): Promise<BillData> => {
           }
         }
       }
-    );
+    ).catch(error => {
+      console.error("Tesseract OCR error:", error);
+      throw new Error("OCR processing failed. Please try a clearer image.");
+    });
     
     console.log("OCR complete, extracting bill data...");
     const extractedText = result.data.text;
