@@ -1,10 +1,12 @@
 
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useState, useRef, DragEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BillData } from "@/types/bill";
 import { extractBillData } from "@/lib/billAnalyzer";
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
+import { FileScan } from "lucide-react";
 
 interface UploadProps {
   onProcessingStart: () => void;
@@ -22,10 +24,48 @@ export const Upload = ({
   className
 }: UploadProps) => {
   const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      validateAndSetFile(e.target.files[0]);
+    }
+  };
+
+  const validateAndSetFile = (file: File) => {
+    // Check file type
+    if (!file.type.match('image/*') && file.type !== 'application/pdf') {
+      onError("Please select a valid image or PDF file");
+      return;
+    }
+    
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      onError("File size exceeds 10MB limit");
+      return;
+    }
+    
+    setFile(file);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      validateAndSetFile(e.dataTransfer.files[0]);
     }
   };
 
@@ -36,60 +76,115 @@ export const Upload = ({
     }
 
     onProcessingStart();
+    setProgress(0);
+    
+    // Set up progress tracker
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        // Simulate processing progress
+        const increment = Math.random() * 15;
+        const newProgress = Math.min(prev + increment, 95);
+        return newProgress;
+      });
+    }, 300);
 
     try {
-      // In a real app, we would send the file to a server for OCR processing
-      // Here we'll simulate the process with a mock function
       const data = await extractBillData(file);
+      clearInterval(progressInterval);
+      setProgress(100);
       onBillProcessed(data);
     } catch (error) {
+      clearInterval(progressInterval);
+      setProgress(0);
       onError(error instanceof Error ? error.message : "Failed to process bill");
+    }
+  };
+
+  const handleBrowseClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+      <div 
+        className={cn(
+          "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
+          isDragging ? "border-primary bg-primary/5" : "border-gray-300",
+          isProcessing ? "bg-gray-100 pointer-events-none" : "hover:bg-gray-50"
+        )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <Input
           type="file"
-          accept="image/png, image/jpeg, application/pdf"
+          accept="image/png, image/jpeg, image/jpg, application/pdf"
           onChange={handleFileChange}
           className="hidden"
           id="bill-upload"
+          ref={fileInputRef}
+          disabled={isProcessing}
         />
         <label
           htmlFor="bill-upload"
-          className="cursor-pointer block"
+          className={cn("block", isProcessing ? "cursor-not-allowed" : "cursor-pointer")}
         >
           <div className="flex flex-col items-center justify-center">
-            <svg
-              className="w-12 h-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              ></path>
-            </svg>
-            <p className="mt-2 text-sm text-gray-600">
-              Click to upload or drag and drop
-            </p>
-            <p className="text-xs text-gray-500">
-              PNG, JPG or PDF (Max. 10MB)
-            </p>
+            {isProcessing ? (
+              <div className="w-full space-y-3">
+                <FileScan className="w-12 h-12 text-primary mx-auto animate-pulse" />
+                <p className="text-sm text-gray-600">Processing bill...</p>
+                <Progress value={progress} className="h-2 w-full" />
+                <p className="text-xs text-gray-500">Using OCR to extract bill data</p>
+              </div>
+            ) : (
+              <>
+                <svg
+                  className="w-12 h-12 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  ></path>
+                </svg>
+                <p className="mt-2 text-sm text-gray-600">
+                  Drag and drop your Meralco bill here
+                </p>
+                <div className="mt-2">
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={handleBrowseClick}
+                  >
+                    Browse Files
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  PNG, JPG or PDF (Max. 10MB)
+                </p>
+              </>
+            )}
           </div>
         </label>
       </div>
 
-      {file && (
-        <p className="text-sm text-center">
-          Selected file: <span className="font-medium">{file.name}</span>
-        </p>
+      {file && !isProcessing && (
+        <div className="text-sm text-center p-2 bg-gray-50 rounded border border-gray-200">
+          <p className="font-medium text-gray-900">Selected file:</p>
+          <p className="text-gray-600 truncate">{file.name}</p>
+          <p className="text-xs text-gray-500">
+            {(file.size / 1024 / 1024).toFixed(2)} MB
+          </p>
+        </div>
       )}
 
       <Button
