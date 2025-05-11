@@ -49,20 +49,46 @@ const parseBillText = (text: string): BillData => {
   // Normalize the text to make matching easier
   const normalizedText = text.toLowerCase().replace(/\s+/g, ' ');
   
-  // Initialize bill data object
-  let billData: Partial<BillData> = {
-    environmentalImpact: {
-      electricityUsed: 0,
-      ghgEmissions: 0,
-      offsetPlantations: 0
+  // Initialize bill data object with required defaults to prevent undefined errors
+  let billData: BillData = {
+    accountNumber: "Not found",
+    billingMonth: "Not found",
+    customerName: "Not found",
+    totalAmount: 0,
+    dueDate: "Not found",
+    generationCharge: 0,
+    transmissionCharge: 0,
+    systemLossCharge: 0,
+    distributionCharge: 0,
+    subsidyCharge: 0,
+    governmentTaxes: 0,
+    universalCharges: 0,
+    fitAllCharge: 0,
+    otherCharges: 0,
+    totalKwh: 0,
+    previousReading: 0,
+    currentReading: 0,
+    ratePerKwh: 0,
+    billingPeriod: {
+      from: "Not found",
+      to: "Not found"
     },
+    meterNumber: "Not found",
+    nextMeterReadingDate: "Not found",
+    customerType: "Residential",
+    monthlyConsumption: [],
+    highUsageFlag: false,
     comparisonData: {
       current: 0,
       previous: 0,
       percentageChange: 0,
       comparedTo: "previous month"
     },
-    monthlyConsumption: []
+    environmentalImpact: {
+      electricityUsed: 0,
+      ghgEmissions: 0,
+      offsetPlantations: 0
+    }
   };
   
   // Try to extract key information using more robust regular expressions
@@ -211,21 +237,21 @@ const parseBillText = (text: string): BillData => {
   // Fill in values for fields we couldn't extract
   completePartialData(billData, text);
   
-  return billData as BillData;
+  return billData;
 };
 
 // Helper function to complete any missing data with calculations or minimal defaults
-const completePartialData = (billData: Partial<BillData>, originalText: string) => {
+const completePartialData = (billData: BillData, originalText: string) => {
   const today = new Date();
   
   // If we have found both readings but no kWh, calculate it
-  if (billData.currentReading !== undefined && billData.previousReading !== undefined && billData.totalKwh === undefined) {
+  if (billData.currentReading !== undefined && billData.previousReading !== undefined && billData.totalKwh === 0) {
     billData.totalKwh = billData.currentReading - billData.previousReading;
     console.log("Calculated kWh from readings:", billData.totalKwh);
   }
   
   // Handle missing values only when absolutely necessary
-  if (!billData.dueDate) {
+  if (billData.dueDate === "Not found") {
     // Try to find any date-like patterns if we missed the specifically labeled due date
     const datePattern = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/g;
     const dateMatches = [...originalText.matchAll(datePattern)];
@@ -244,7 +270,7 @@ const completePartialData = (billData: Partial<BillData>, originalText: string) 
     }
   }
   
-  if (!billData.accountNumber) {
+  if (billData.accountNumber === "Not found") {
     // Try to find any number sequences that could be an account number
     const numberPattern = /\b\d{7,12}\b/g;
     const numberMatches = [...originalText.matchAll(numberPattern)];
@@ -253,14 +279,11 @@ const completePartialData = (billData: Partial<BillData>, originalText: string) 
       // Use first long number sequence as potential account number
       billData.accountNumber = numberMatches[0][0];
       console.log("Found potential account number:", billData.accountNumber);
-    } else {
-      billData.accountNumber = "Not found in bill";
-      console.log("No account number pattern found in text");
     }
   }
   
   // If we have total kWh but no readings, create plausible readings
-  if (billData.totalKwh !== undefined && billData.currentReading === undefined) {
+  if (billData.totalKwh > 0 && billData.currentReading === 0) {
     // Try to find any large number that might be a meter reading
     const meterPattern = /\b\d{4,6}\b/g;
     const meterMatches = [...originalText.matchAll(meterPattern)];
@@ -280,14 +303,14 @@ const completePartialData = (billData: Partial<BillData>, originalText: string) 
   }
   
   // Calculate total amount if we have kWh and rate but no total
-  if (billData.totalKwh !== undefined && billData.ratePerKwh !== undefined && billData.totalAmount === undefined) {
+  if (billData.totalKwh > 0 && billData.ratePerKwh > 0 && billData.totalAmount === 0) {
     // Estimate total based on kWh and rate
     billData.totalAmount = billData.totalKwh * billData.ratePerKwh;
     console.log("Calculated estimated total amount:", billData.totalAmount);
   }
   
   // If missing billing month, try to extract it from text or use current month
-  if (!billData.billingMonth) {
+  if (billData.billingMonth === "Not found") {
     const months = ["January", "February", "March", "April", "May", "June", 
                   "July", "August", "September", "October", "November", "December"];
     
@@ -301,14 +324,14 @@ const completePartialData = (billData: Partial<BillData>, originalText: string) 
     }
     
     // If still missing, use current month
-    if (!billData.billingMonth) {
+    if (billData.billingMonth === "Not found") {
       billData.billingMonth = `${months[today.getMonth()]} ${today.getFullYear()}`;
       console.log("Using current month for billing month:", billData.billingMonth);
     }
   }
   
   // Environmental impact calculation based on actual kWh
-  if (billData.totalKwh !== undefined) {
+  if (billData.totalKwh > 0) {
     billData.environmentalImpact = {
       electricityUsed: billData.totalKwh,
       ghgEmissions: billData.totalKwh * 0.000692, // CO2 emission factor for Philippines
@@ -318,7 +341,7 @@ const completePartialData = (billData: Partial<BillData>, originalText: string) 
   }
   
   // Generate historical comparison data if we have kWh
-  if (billData.totalKwh !== undefined) {
+  if (billData.totalKwh > 0) {
     // For comparison, use a slight variation on the current value
     const prevKwh = billData.totalKwh * (0.9 + Math.random() * 0.2); // 90-110% of current
     
@@ -339,7 +362,7 @@ const completePartialData = (billData: Partial<BillData>, originalText: string) 
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentMonth = today.getMonth();
     
-    let baseLine = billData.totalKwh ?? 250; // Use actual kWh or default
+    let baseLine = billData.totalKwh > 0 ? billData.totalKwh : 250; // Use actual kWh or default
     billData.monthlyConsumption = [];
     
     for (let i = 0; i < 12; i++) {
@@ -360,13 +383,8 @@ const completePartialData = (billData: Partial<BillData>, originalText: string) 
     console.log("Generated monthly consumption data for charts");
   }
   
-  // If still missing customer type, default to residential
-  if (!billData.customerType) {
-    billData.customerType = "Residential";
-  }
-  
   // Calculate next meter reading date if we have billing period
-  if (billData.billingPeriod) {
+  if (billData.billingPeriod.to !== "Not found") {
     // Try to calculate next reading date based on billing period
     try {
       const endDateParts = billData.billingPeriod.to.split(/[\/\-]/);
@@ -434,7 +452,7 @@ export const analyzeBillForSuggestions = (billData: BillData) => {
   // Environmental impact suggestions
   suggestions.push({
     title: "Reduce your environmental footprint",
-    description: `Your electricity usage of ${billData.environmentalImpact.electricityUsed} kWh resulted in ${billData.environmentalImpact.ghgEmissions} tons of CO2 emissions. Consider energy-efficient alternatives to reduce your carbon footprint.`,
+    description: `Your electricity usage of ${billData.environmentalImpact.electricityUsed} kWh resulted in ${billData.environmentalImpact.ghgEmissions.toFixed(3)} tons of CO2 emissions. Consider energy-efficient alternatives to reduce your carbon footprint.`,
     impact: "low"
   });
 

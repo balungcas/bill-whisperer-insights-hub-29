@@ -42,4 +42,3 @@ export interface BillData {
     offsetPlantations: number;
   };
 }
-

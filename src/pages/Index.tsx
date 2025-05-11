@@ -16,7 +16,25 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleBillProcessed = (data: BillData) => {
-    setBillData(data);
+    // Ensure all required fields have default values
+    const safeData: BillData = {
+      ...data,
+      billingPeriod: data.billingPeriod || { from: "Not found", to: "Not found" },
+      environmentalImpact: data.environmentalImpact || { 
+        electricityUsed: 0,
+        ghgEmissions: 0,
+        offsetPlantations: 0 
+      },
+      comparisonData: data.comparisonData || {
+        current: 0,
+        previous: 0,
+        percentageChange: 0,
+        comparedTo: "previous month"
+      },
+      monthlyConsumption: data.monthlyConsumption || []
+    };
+    
+    setBillData(safeData);
     setIsProcessing(false);
     toast.success("Bill analysis complete!");
   };
