@@ -1,4 +1,3 @@
-
 import { BillData } from "@/types/bill";
 import Tesseract from 'tesseract.js';
 
@@ -263,13 +262,23 @@ const completePartialData = (billData: BillData, originalText: string) => {
     if (dateMatches.length > 0) {
       // Use the last found date as a potential due date
       const lastDateMatch = dateMatches[dateMatches.length - 1];
-      billData.dueDate = lastDateMatch[0];
-      console.log("Found potential due date from text:", billData.dueDate);
+      
+      // Format the date in ISO format
+      const parts = lastDateMatch[0].split(/[\/\-]/);
+      if (parts.length === 3) {
+        // Ensure 4-digit year
+        let year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+        // Create YYYY-MM-DD format
+        billData.dueDate = `${year}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+        console.log("Found potential due date from text:", billData.dueDate);
+      } else {
+        billData.dueDate = lastDateMatch[0];
+      }
     } else {
       // If still missing, use today + 10 days as a fallback
       const dueDate = new Date(today);
       dueDate.setDate(dueDate.getDate() + 10);
-      billData.dueDate = dueDate.toLocaleDateString('en-US');
+      billData.dueDate = dueDate.toISOString().split('T')[0]; // ISO format: YYYY-MM-DD
       console.log("No due date found, using fallback:", billData.dueDate);
     }
   }
@@ -334,6 +343,81 @@ const completePartialData = (billData: BillData, originalText: string) => {
     }
   }
   
+  // When setting billing period dates, ensure they are in a valid format
+  if (billData.billingPeriod.from === "Not found" || billData.billingPeriod.to === "Not found") {
+    // Default billing period to a valid format
+    const lastMonth = new Date(today);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    
+    if (billData.billingPeriod.from === "Not found") {
+      billData.billingPeriod.from = lastMonth.toISOString().split('T')[0]; // ISO format: YYYY-MM-DD
+    }
+    
+    if (billData.billingPeriod.to === "Not found") {
+      billData.billingPeriod.to = today.toISOString().split('T')[0]; // ISO format: YYYY-MM-DD
+    }
+    
+    console.log("Set default billing period:", billData.billingPeriod);
+  }
+  
+  // Ensure nextMeterReadingDate is in a valid format
+  if (billData.nextMeterReadingDate === "Not found" || !billData.nextMeterReadingDate) {
+    const nextMonth = new Date(today);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    billData.nextMeterReadingDate = nextMonth.toISOString().split('T')[0]; // ISO format: YYYY-MM-DD
+    console.log("Set default next meter reading date:", billData.nextMeterReadingDate);
+  } else {
+    try {
+      // Try to ensure the date is in a valid format
+      const date = new Date(billData.nextMeterReadingDate);
+      if (isNaN(date.getTime())) {
+        // If invalid, set a default
+        const nextMonth = new Date(today);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        billData.nextMeterReadingDate = nextMonth.toISOString().split('T')[0]; // ISO format: YYYY-MM-DD
+      }
+    } catch (e) {
+      // If error, set a default
+      const nextMonth = new Date(today);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      billData.nextMeterReadingDate = nextMonth.toISOString().split('T')[0]; // ISO format: YYYY-MM-DD
+    }
+  }
+  
+  // Calculate next meter reading date if we have billing period
+  if (billData.billingPeriod.to !== "Not found") {
+    // Try to calculate next reading date based on billing period
+    try {
+      const endDateParts = billData.billingPeriod.to.split(/[\/\-]/);
+      if (endDateParts.length >= 3) {
+        const endDate = new Date(
+          parseInt(endDateParts[2].length === 2 ? `20${endDateParts[2]}` : endDateParts[2]),
+          parseInt(endDateParts[0]) - 1,
+          parseInt(endDateParts[1])
+        );
+        
+        // Next reading typically 30 days after last reading
+        endDate.setDate(endDate.getDate() + 30);
+        billData.nextMeterReadingDate = endDate.toISOString().split('T')[0];
+      } else {
+        // Fallback if date parsing fails
+        const nextMonth = new Date(today);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        billData.nextMeterReadingDate = nextMonth.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      // Default if date parsing failed
+      const nextMonth = new Date(today);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      billData.nextMeterReadingDate = nextMonth.toISOString().split('T')[0];
+    }
+  } else {
+    // Default next reading date if no billing period found
+    const nextMonth = new Date(today);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    billData.nextMeterReadingDate = nextMonth.toISOString().split('T')[0];
+  }
+  
   // Environmental impact calculation based on actual kWh
   if (billData.totalKwh > 0) {
     billData.environmentalImpact = {
@@ -385,40 +469,6 @@ const completePartialData = (billData: BillData, originalText: string) => {
     
     billData.monthlyConsumption.reverse();
     console.log("Generated monthly consumption data for charts");
-  }
-  
-  // Calculate next meter reading date if we have billing period
-  if (billData.billingPeriod.to !== "Not found") {
-    // Try to calculate next reading date based on billing period
-    try {
-      const endDateParts = billData.billingPeriod.to.split(/[\/\-]/);
-      if (endDateParts.length >= 3) {
-        const endDate = new Date(
-          parseInt(endDateParts[2].length === 2 ? `20${endDateParts[2]}` : endDateParts[2]),
-          parseInt(endDateParts[0]) - 1,
-          parseInt(endDateParts[1])
-        );
-        
-        // Next reading typically 30 days after last reading
-        endDate.setDate(endDate.getDate() + 30);
-        billData.nextMeterReadingDate = endDate.toISOString().split('T')[0];
-      } else {
-        // Fallback if date parsing fails
-        const nextMonth = new Date(today);
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
-        billData.nextMeterReadingDate = nextMonth.toISOString().split('T')[0];
-      }
-    } catch (e) {
-      // Default if date parsing failed
-      const nextMonth = new Date(today);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-      billData.nextMeterReadingDate = nextMonth.toISOString().split('T')[0];
-    }
-  } else {
-    // Default next reading date if no billing period found
-    const nextMonth = new Date(today);
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    billData.nextMeterReadingDate = nextMonth.toISOString().split('T')[0];
   }
 };
 

@@ -3,11 +3,36 @@ import { BillData } from "@/types/bill";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/formatters";
-import { format } from "date-fns";
+import { parseISO, isValid, format } from "date-fns";
 
 interface BillInfoProps {
   billData: BillData;
 }
+
+// Helper function to safely format dates
+const safeFormatDate = (dateString: string) => {
+  if (!dateString || dateString === "Not found") {
+    return "Not available";
+  }
+  
+  try {
+    // Try to parse the date
+    const date = parseISO(dateString);
+    if (isValid(date)) {
+      return format(date, "dd MMM yyyy");
+    } else {
+      // If parseISO fails, try direct Date constructor
+      const fallbackDate = new Date(dateString);
+      if (isValid(fallbackDate)) {
+        return format(fallbackDate, "dd MMM yyyy");
+      }
+    }
+    return dateString; // Return original string if parsing fails
+  } catch (e) {
+    console.log("Date parsing error:", e);
+    return dateString; // Return original string if parsing fails
+  }
+};
 
 export const BillInfo = ({ billData }: BillInfoProps) => {
   return (
@@ -16,7 +41,7 @@ export const BillInfo = ({ billData }: BillInfoProps) => {
         <CardHeader className="pb-2">
           <CardTitle className="text-xl">Bill Summary</CardTitle>
           <CardDescription>
-            Billing Period: {format(new Date(billData.billingPeriod.from), "dd MMM yyyy")} to {format(new Date(billData.billingPeriod.to), "dd MMM yyyy")}
+            Billing Period: {safeFormatDate(billData.billingPeriod.from)} to {safeFormatDate(billData.billingPeriod.to)}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -35,7 +60,7 @@ export const BillInfo = ({ billData }: BillInfoProps) => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Due Date</p>
-              <p className="font-medium">{format(new Date(billData.dueDate), "dd MMM yyyy")}</p>
+              <p className="font-medium">{safeFormatDate(billData.dueDate)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Customer Type</p>
@@ -55,7 +80,7 @@ export const BillInfo = ({ billData }: BillInfoProps) => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Next Reading Date</p>
-              <p className="font-medium">{format(new Date(billData.nextMeterReadingDate), "dd MMM yyyy")}</p>
+              <p className="font-medium">{safeFormatDate(billData.nextMeterReadingDate)}</p>
             </div>
           </div>
         </CardContent>
@@ -203,4 +228,3 @@ export const BillInfo = ({ billData }: BillInfoProps) => {
     </div>
   );
 };
-

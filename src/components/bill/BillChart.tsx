@@ -26,16 +26,16 @@ export const BillChart = ({ billData }: BillChartProps) => {
   });
 
   const chargesData: ChargeData[] = [
-    { name: "Generation", value: billData.generationCharge },
-    { name: "Transmission", value: billData.transmissionCharge },
-    { name: "System Loss", value: billData.systemLossCharge },
-    { name: "Distribution", value: billData.distributionCharge },
-    { name: "Subsidy", value: billData.subsidyCharge },
-    { name: "Govt. Taxes", value: billData.governmentTaxes },
-    { name: "Universal Charges", value: billData.universalCharges },
-    { name: "FIT-All", value: billData.fitAllCharge },
-    { name: "Others", value: billData.otherCharges },
-  ];
+    { name: "Generation", value: billData.generationCharge || 0 },
+    { name: "Transmission", value: billData.transmissionCharge || 0 },
+    { name: "System Loss", value: billData.systemLossCharge || 0 },
+    { name: "Distribution", value: billData.distributionCharge || 0 },
+    { name: "Subsidy", value: billData.subsidyCharge || 0 },
+    { name: "Govt. Taxes", value: billData.governmentTaxes || 0 },
+    { name: "Universal Charges", value: billData.universalCharges || 0 },
+    { name: "FIT-All", value: billData.fitAllCharge || 0 },
+    { name: "Others", value: billData.otherCharges || 0 },
+  ].filter(item => item.value > 0); // Only show charges that have values
 
   // Add average line to consumption chart
   const avgConsumption = consumptionData.reduce((sum, item) => sum + item.consumption, 0) / consumptionData.length;
@@ -94,50 +94,52 @@ export const BillChart = ({ billData }: BillChartProps) => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Charges Breakdown</CardTitle>
-          <CardDescription>
-            Percentage distribution of your electricity bill charges
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="aspect-[4/3] w-full">
-            <ChartContainer
-              config={{
-                pie: { theme: { light: '#0088FE', dark: '#0088FE' } }
-              }}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chargesData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    nameKey="name"
-                    label={renderCustomizedLabel}
-                  >
-                    {chargesData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => {
-                    if (typeof value === 'number') {
-                      return `₱${value.toFixed(2)}`;
-                    }
-                    return `₱${value}`;
-                  }} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </div>
-        </CardContent>
-      </Card>
+      {chargesData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Charges Breakdown</CardTitle>
+            <CardDescription>
+              Percentage distribution of your electricity bill charges
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="aspect-[4/3] w-full">
+              <ChartContainer
+                config={{
+                  pie: { theme: { light: '#0088FE', dark: '#0088FE' } }
+                }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chargesData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      nameKey="name"
+                      label={renderCustomizedLabel}
+                    >
+                      {chargesData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => {
+                      if (typeof value === 'number') {
+                        return `₱${value.toFixed(2)}`;
+                      }
+                      return `₱${value}`;
+                    }} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
