@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload } from "@/components/upload/Upload";
@@ -108,4 +107,3 @@ const Index = () => {
 };
 
 export default Index;
-

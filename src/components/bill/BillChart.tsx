@@ -1,8 +1,7 @@
-
 import { BillData } from "@/types/bill";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Cell, PieChart, Pie, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Cell, PieChart, Pie, Legend, ValueType } from 'recharts';
 
 interface BillChartProps {
   billData: BillData;
@@ -125,7 +124,7 @@ export const BillChart = ({ billData }: BillChartProps) => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `₱${value.toFixed(2)}`} />
+                  <Tooltip formatter={(value) => `₱${typeof value === 'number' ? value.toFixed(2) : value}`} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -206,4 +205,3 @@ const renderCustomizedLabel = ({
     </text>
   );
 };
-
