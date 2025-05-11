@@ -4,19 +4,22 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BillData } from "@/types/bill";
 import { extractBillData } from "@/lib/billAnalyzer";
+import { cn } from "@/lib/utils";
 
 interface UploadProps {
   onProcessingStart: () => void;
   onBillProcessed: (data: BillData) => void;
   onError: (message: string) => void;
   isProcessing: boolean;
+  className?: string;
 }
 
 export const Upload = ({ 
   onProcessingStart,
   onBillProcessed,
   onError,
-  isProcessing
+  isProcessing,
+  className
 }: UploadProps) => {
   const [file, setFile] = useState<File | null>(null);
 
@@ -45,7 +48,7 @@ export const Upload = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", className)}>
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
         <Input
           type="file"
