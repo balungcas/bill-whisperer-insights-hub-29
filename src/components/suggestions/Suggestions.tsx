@@ -2,8 +2,9 @@
 import { BillData } from "@/types/bill";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ArrowUp, Info, TrendingUp, TrendingDown } from "lucide-react";
+import { Info, TrendingUp, TrendingDown } from "lucide-react";
 import { analyzeBillForSuggestions } from "@/lib/billAnalyzer";
+import { formatCurrency } from "@/lib/formatters";
 
 interface SuggestionsProps {
   billData: BillData;
@@ -11,13 +12,7 @@ interface SuggestionsProps {
 
 export const Suggestions = ({ billData }: SuggestionsProps) => {
   const suggestions = analyzeBillForSuggestions(billData);
-
-  // Calculate if current month is higher than previous
-  const currentMonthData = billData.monthlyConsumption[billData.monthlyConsumption.length - 1];
-  const previousMonthData = billData.monthlyConsumption[billData.monthlyConsumption.length - 2];
-  const percentageChange = previousMonthData 
-    ? ((currentMonthData.consumption - previousMonthData.consumption) / previousMonthData.consumption) * 100
-    : 0;
+  const { percentageChange } = billData.comparisonData;
 
   return (
     <Card>
@@ -34,7 +29,7 @@ export const Suggestions = ({ billData }: SuggestionsProps) => {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-sm text-muted-foreground">Current Usage</p>
-                  <p className="text-2xl font-bold">{currentMonthData.consumption} kWh</p>
+                  <p className="text-2xl font-bold">{billData.totalKwh} kWh</p>
                 </div>
                 <div className={`flex items-center ${percentageChange > 0 ? 'text-red-500' : 'text-green-500'}`}>
                   {percentageChange > 0 ? (
@@ -55,12 +50,12 @@ export const Suggestions = ({ billData }: SuggestionsProps) => {
 
           <Card>
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Average Cost per kWh</p>
+              <p className="text-sm text-muted-foreground">Rate per kWh</p>
               <p className="text-2xl font-bold">
-                ₱{(billData.totalAmount / billData.totalKwh).toFixed(2)}
+                ₱{billData.ratePerKwh.toFixed(2)}
               </p>
               <p className="text-xs mt-2 text-muted-foreground">
-                Based on your total bill amount and consumption
+                Your total bill: {formatCurrency(billData.totalAmount)} for {billData.totalKwh} kWh
               </p>
             </CardContent>
           </Card>
@@ -79,7 +74,20 @@ export const Suggestions = ({ billData }: SuggestionsProps) => {
             </Alert>
           ))}
         </div>
+
+        <Card className="bg-muted/50">
+          <CardContent className="pt-6">
+            <h3 className="text-lg font-medium mb-2">Environmental Impact</h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              Your electricity consumption of {billData.environmentalImpact.electricityUsed} kWh produced approximately {billData.environmentalImpact.ghgEmissions} tons of greenhouse gas emissions.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              This is equivalent to the CO₂ absorbed by {billData.environmentalImpact.offsetPlantations} trees in one year.
+            </p>
+          </CardContent>
+        </Card>
       </CardContent>
     </Card>
   );
 };
+

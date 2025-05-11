@@ -3,6 +3,7 @@ import { BillData } from "@/types/bill";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/formatters";
+import { format } from "date-fns";
 
 interface BillInfoProps {
   billData: BillData;
@@ -15,13 +16,13 @@ export const BillInfo = ({ billData }: BillInfoProps) => {
         <CardHeader className="pb-2">
           <CardTitle className="text-xl">Bill Summary</CardTitle>
           <CardDescription>
-            {billData.billingMonth} - Due on {new Date(billData.dueDate).toLocaleDateString()}
+            Billing Period: {format(new Date(billData.billingPeriod.from), "dd MMM yyyy")} to {format(new Date(billData.billingPeriod.to), "dd MMM yyyy")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Account Number</p>
+              <p className="text-sm text-muted-foreground">Customer Account Number</p>
               <p className="font-medium">{billData.accountNumber}</p>
             </div>
             <div>
@@ -29,20 +30,32 @@ export const BillInfo = ({ billData }: BillInfoProps) => {
               <p className="font-medium">{billData.customerName}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Amount</p>
+              <p className="text-sm text-muted-foreground">Total Amount Due</p>
               <p className="font-medium text-lg">{formatCurrency(billData.totalAmount)}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total kWh</p>
+              <p className="text-sm text-muted-foreground">Due Date</p>
+              <p className="font-medium">{format(new Date(billData.dueDate), "dd MMM yyyy")}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Customer Type</p>
+              <p className="font-medium">{billData.customerType}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Rate per kWh</p>
+              <p className="font-medium">₱{billData.ratePerKwh.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Consumption</p>
               <p className="font-medium">{billData.totalKwh} kWh</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Current Reading</p>
-              <p className="font-medium">{billData.currentReading}</p>
+              <p className="text-sm text-muted-foreground">Meter Number</p>
+              <p className="font-medium">{billData.meterNumber}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Previous Reading</p>
-              <p className="font-medium">{billData.previousReading}</p>
+              <p className="text-sm text-muted-foreground">Next Reading Date</p>
+              <p className="font-medium">{format(new Date(billData.nextMeterReadingDate), "dd MMM yyyy")}</p>
             </div>
           </div>
         </CardContent>
@@ -87,14 +100,14 @@ export const BillInfo = ({ billData }: BillInfoProps) => {
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell>Distribution Charge</TableCell>
+                <TableCell>Distribution (Meralco)</TableCell>
                 <TableCell className="text-right">{formatCurrency(billData.distributionCharge)}</TableCell>
                 <TableCell className="text-right">
                   {((billData.distributionCharge / billData.totalAmount) * 100).toFixed(1)}%
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell>Subsidy Charge</TableCell>
+                <TableCell>Subsidies</TableCell>
                 <TableCell className="text-right">{formatCurrency(billData.subsidyCharge)}</TableCell>
                 <TableCell className="text-right">
                   {((billData.subsidyCharge / billData.totalAmount) * 100).toFixed(1)}%
@@ -105,6 +118,20 @@ export const BillInfo = ({ billData }: BillInfoProps) => {
                 <TableCell className="text-right">{formatCurrency(billData.governmentTaxes)}</TableCell>
                 <TableCell className="text-right">
                   {((billData.governmentTaxes / billData.totalAmount) * 100).toFixed(1)}%
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>Universal Charges</TableCell>
+                <TableCell className="text-right">{formatCurrency(billData.universalCharges)}</TableCell>
+                <TableCell className="text-right">
+                  {((billData.universalCharges / billData.totalAmount) * 100).toFixed(1)}%
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>FIT-All (Renewable)</TableCell>
+                <TableCell className="text-right">{formatCurrency(billData.fitAllCharge)}</TableCell>
+                <TableCell className="text-right">
+                  {((billData.fitAllCharge / billData.totalAmount) * 100).toFixed(1)}%
                 </TableCell>
               </TableRow>
               <TableRow>
@@ -123,6 +150,57 @@ export const BillInfo = ({ billData }: BillInfoProps) => {
           </Table>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">Meter Reading Information</CardTitle>
+          <CardDescription>
+            Current and previous meter readings
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Previous Reading</p>
+              <p className="font-medium">{billData.previousReading}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Current Reading</p>
+              <p className="font-medium">{billData.currentReading}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Consumption</p>
+              <p className="font-medium">{billData.totalKwh} kWh</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">Environmental Impact</CardTitle>
+          <CardDescription>
+            Impact of your electricity usage on the environment
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border rounded-lg p-4 flex flex-col items-center">
+              <p className="text-sm text-muted-foreground">Electricity Used</p>
+              <p className="font-medium text-xl">{billData.environmentalImpact.electricityUsed} kWh</p>
+            </div>
+            <div className="border rounded-lg p-4 flex flex-col items-center">
+              <p className="text-sm text-muted-foreground">GHG Emissions</p>
+              <p className="font-medium text-xl">{billData.environmentalImpact.ghgEmissions} tons</p>
+            </div>
+            <div className="border rounded-lg p-4 flex flex-col items-center">
+              <p className="text-sm text-muted-foreground">Offset Plantations</p>
+              <p className="font-medium text-xl">{billData.environmentalImpact.offsetPlantations} trees</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
+

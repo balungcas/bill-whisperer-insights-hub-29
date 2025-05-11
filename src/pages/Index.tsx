@@ -7,7 +7,7 @@ import { BillChart } from "@/components/bill/BillChart";
 import { Suggestions } from "@/components/suggestions/Suggestions";
 import { BillData } from "@/types/bill";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowUp, ChartBar, Info } from "lucide-react";
+import { ChartBar, Info } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
 const Index = () => {
@@ -108,3 +108,4 @@ const Index = () => {
 };
 
 export default Index;
+

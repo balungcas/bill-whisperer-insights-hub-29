@@ -11,13 +11,35 @@ export interface BillData {
   distributionCharge: number;
   subsidyCharge: number;
   governmentTaxes: number;
+  universalCharges: number;
+  fitAllCharge: number;
   otherCharges: number;
   totalKwh: number;
   previousReading: number;
   currentReading: number;
+  ratePerKwh: number;
+  billingPeriod: {
+    from: string;
+    to: string;
+  };
+  meterNumber: string;
+  nextMeterReadingDate: string;
+  customerType: string;
   monthlyConsumption: {
     month: string;
     consumption: number;
   }[];
   highUsageFlag: boolean;
+  comparisonData: {
+    current: number;
+    previous: number;
+    percentageChange: number;
+    comparedTo: string;
+  };
+  environmentalImpact: {
+    electricityUsed: number;
+    ghgEmissions: number;
+    offsetPlantations: number;
+  };
 }
+
